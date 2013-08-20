@@ -12,8 +12,8 @@ One of the prerequisites of writing the (long, convoluted, exquisitely formatted
 
 Note that, by default, bro includes a number of scripts that are able to generate aggregate performance metrics, but most of these tools focus on general system performance metrics (e.g. how much CPU, how much memory) rather than trying to investigate *where* (in analyzer-land and script-land) bro is actually spending its time.  To remedy this, there is a forked version of bro that traces *all* the script code and *many* of the analyzers hit when processing a particular packet.  PyBrIG uses this forked version of bro to gather some very detailed information about how / where bro spends its time when executing a trace, and combines that with detailed process-level statistics (obtained on a regular basis via the Python psutil library) to generate a (hopefully) complete picture of how it was that bro spent its time processing a particular trace.
 
-In the longer term, when enough of these benchmarks have been run against different traces on different systems, the idea is that some patterns may emerge with regard to where and how it is that bro spends its time in the general case.  This kind of data is useful to not only the bro team (who can use it to optimize future versions of the code), but also to the operators actually running bro in their environments (as a way to troubleshoot performance issues on a particular node).
-
+In the longer term, when enough of these benchmarks have been run against different traces on different systems, the idea is that some patterns may emerge with regard to where and how it is that bro spends its time in the general case.
+  
 Overview
 --------
 
@@ -77,12 +77,12 @@ Each script included with this project will eventually include a flag ('-P') whi
 Contributing
 ------------
 
-One of the really cool things about having a benchmarking toolkit is the ability to share results.  To this end, we would really, really appreciate it if you wanted to send a copy of your benchmarking results to the bro team!  If you would like to do this:
+One of the really cool things about having a benchmarking toolkit is the ability to share results.  If you would like to do this:
 
 * Ensure all benchmarks have been captured with the '-P' option enabled (see above).
 * .tar.bz2 (or equivalent) the output of gather.py (specified via the '-o' option) and benchmark.py (/tmp/pybrig/trials) into a single, happy archive.
 * Put a copy of the archive onto dropbox and / or an equivalent file-sharing service.
-* Contact someone on the Bro team to let us know.
+* Contact the individual / group in question to let them know :)
 
 Thank you all in advance for your help and support!
 

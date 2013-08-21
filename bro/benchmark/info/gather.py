@@ -50,16 +50,29 @@ class SystemInformation(object):
         self.sysctl = dict()
         sysctl = sh.sysctl.bake(_cwd='.')
         last = ""
+        os_name = sh.uname().strip()
         for line in sysctl('-a', _iter=True):
-            if " = " in line:
-                res = line.split(" = ")
-                self.sysctl[res[0]] = res[1].strip()
-                last = res[0]
-            elif last != "":
-                self.sysctl[last] += res[1].strip()
+            if os_name == "Linux":
+                if " = " in line:
+                    res = line.split(" = ")
+                    self.sysctl[res[0].strip()] = res[1].strip()
+                    last = res[0]
+                elif last != "":
+                    self.sysctl[last] += res[1].strip()
+            elif os_name == "Darwin":
+                if " = " in line:
+                    res = line.split(" = ")
+                    self.sysctl[res[0].strip()] = res[1].strip()
+                    last = res[0].strip()
+                elif ": " in line:
+                    res = line.split(": ")
+                    self.sysctl[res[0].strip()] = res[1].strip()
+                    last = res[0].strip()
+                elif last != "":
+                    self.sysctl[last] += res[1].strip()
 
     def gather_modules(self):
-        if(sh.uname() != "Linux"):
+        if(sh.uname().strip() != "Linux"):
             return
         self.modules = []
         lsmod = sh.Command('/sbin/lsmod')

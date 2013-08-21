@@ -38,6 +38,12 @@ class MonitorThread(object):
         self.frequency = frequency
         self.do_suspend = do_suspend
 
+    def safe_psutil_measure(self, fptr):
+        try:
+            return fptr()
+        except psutil.AccessDenied:
+            return None
+
     def run(self, pid, uuid):
         # Normally this wouldn't be safe, but the GIL fixes it for us ...
         process = psutil.Process(pid)
@@ -48,22 +54,22 @@ class MonitorThread(object):
         while self.keeprunning:
             try:
                 curr = MonitorEntry()
-                curr.memory = psutil.virtual_memory()
-                curr.swap = psutil.swap_memory()
-                curr.cpu = psutil.cpu_times()
-                curr.disk = psutil.disk_io_counters()
+                curr.memory =  self.safe_psutil_measure(psutil.virtual_memory)
+                curr.swap = self.safe_psutil_measure(psutil.swap_memory)
+                curr.cpu = self.safe_psutil_measure(psutil.cpu_times)
+                curr.disk = self.safe_psutil_measure(psutil.disk_io_counters)
                 curr.ts = time.time()
                 # So we don't end up getting tearing across our results, put the process to sleep before
                 # we gather current information.
                 if self.do_suspend:
                     process.suspend()
-                curr.pmem = process.get_ext_memory_info()
+                curr.pmem = self.safe_psutil_measure(process.get_ext_memory_info)
                 if hasattr(process, 'get_io_counters'):
-                    curr.pdisk = process.get_io_counters()
-                curr.pcpu = process.get_cpu_times()
-                curr.pthreads = process.get_threads()
-                curr.ctx = process.get_num_ctx_switches()
-                mmaps = process.get_memory_maps()
+                    curr.pdisk = self.safe_psutil_measure(process.get_io_counters)
+                curr.pcpu = self.safe_psutil_measure(process.get_cpu_times)
+                curr.pthreads = self.safe_psutil_measure(process.get_threads)
+                curr.ctx = self.safe_psutil_measure(process.get_num_ctx_switches)
+                mmaps = self.safe_psutil_measure(process.get_memory_maps)
                 for curr_map in mmaps:
                     if(curr_map.path == "[heap]"):
                         curr.heap_size = curr_map.rss
@@ -75,8 +81,6 @@ class MonitorThread(object):
                 time.sleep(self.frequency)
             except psutil.NoSuchProcess:
                 self.keeprunning = False
-            except psutil.AccessDenied:
-                pass
 
 class BenchmarkTrial(object):
     def __init__(self, basedir, template, bro, capture, realtime=False, bare=False, scripts=[]):

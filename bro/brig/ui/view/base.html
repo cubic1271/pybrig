@@ -1,0 +1,58 @@
+<h3>Overview</h3>
+<p>
+    Welcome to the Bro Information Gathering (BrIG) user interface.  This user interface is meant to offer a way to view /
+    explore various system statistics and bro benchmarking information.  While not authoritative, the hope is that the
+    information provided here can offer a way to get an idea of exactly where bro is spending its time.
+</p>
+<p>
+    The information contained here is divided into two sections: 'Benchmark' and 'System Profile'.
+</p>
+<h3>Benchmark</h3>
+<p>
+    The BrIG library includes two relatively simple synthetic bro benchmarks.  The first of these benchmarks (script
+    performance impact analysis) offers a way to characterise the performance impact of loading and running a particular
+    script.
+</p>
+<p>
+    We begin this benchmark by scanning the init-default and site-local bro scripts to look for @load directives.  These
+    directives are used to create a complete list of scripts that are loaded when bro is run.  Once this list has been
+    created, we start at the first @load directive we found, and call bro, telling bro to load <strong>only</strong>
+    that script (via the 'bare mode' option identified with '-b'):
+</p>
+<blockquote>
+    bro -r /path/to/capture/file -b /path/to/the/first.bro
+</blockquote>
+<p>
+    The results of this execution are recorded into a directory called 'load-1'.  Once this is done, we call bro again,
+    only this time we tell it to load the first <strong>two</strong> scripts:
+</p>
+<blockquote>
+    bro -r /path/to/capture/file -b /path/to/the/first.bro /path/to/the/second.bro
+</blockquote>
+<p>
+    the results of which end up in a directory called 'load-2'.  Next, we call bro again with the first three scripts,
+    then again with the first four, then again with the first five, etc.  We stop when we have run bro once for every
+    script that we found to be loaded when bro is run normally.
+</p>
+<p>
+    Once we have completed this process, we are able to compare load-X and load-X+1 to determine exactly how a particular
+    script affected bro's performance when bro processed a particular trace file.
+</p>
+<h3>System Profile</h3>
+<p>
+    When examining the results of a particular benchmark, it's often important to helpful to also consult various settings
+    and / or system specifications.  The system profile tool (gather.py) can help with this process by constructing a high-
+    level summary of various system characteristics.
+</p>
+<p>
+    This summary is built by using Python to call a number of different libraries and system utilities, including:
+</p>
+<ul>
+    <li><a href='http://www.hyperic.com/products/sigar'>SIGAR</a></li>
+    <li><a href='http://code.google.com/p/psutil/'>psutil</a></li>
+    <li><a href='http://linux.die.net/man/8/lsmod'>lsmod (on Linux systems)</a></li>
+    <li><a href='http://linux.die.net/man/8/sysctl'>sysctl</a></li>
+</ul>
+<p>
+    The summary is given a randomly-generated UUID and can be associated with one or more sets of benchmark results.
+</p>

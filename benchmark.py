@@ -143,11 +143,6 @@ if __name__ == '__main__':
 
     import bro.benchmark.info.trial as bench
     benchmark_ref = bench.BenchmarkInfo()
-    recorder = sh.Command(sys.executable).bake('util/benchmark-snapshot.py', _env=broenv)
-    try:
-        recorder_process = recorder(_bg = True, _out = '/tmp/benchmark-snapshot.log', _err = '/tmp/benchmark-snapshot.log')
-    except sh.ErrorReturnCode,ex:
-        print "Unable to launch recorder process: %s", ex.stderr
 
     broexec = sh.Command(prefix + '/bin/bro').bake(_env=broenv)
     trial = bench.BenchmarkTrial(trial_dir, 'script-benchmark.bro', broexec,
@@ -200,7 +195,7 @@ if __name__ == '__main__':
                 print ex.message
                 sys.exit(-1)
             trial.pushd(os.path.join(trial.basedir, trial.name))
-            shutil.copy(data['benchmark_log_path'], os.path.join(trial.basedir, trial.name))
+            shutil.copy(data['benchmark_log_path'], os.path.join(os.path.join(trial.basedir, trial.name), 'benchmark.json'))
             trial.popd()
             benchmark_ref.add(trial)
             i = i + 1
@@ -213,4 +208,4 @@ if __name__ == '__main__':
         print "*** Benchmark aborted.  Current trial at time of termination: %s" % trial.name
 
     print "Shutting down recorder process ..."
-    recorder_process.kill()
+

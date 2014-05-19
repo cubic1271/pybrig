@@ -15,15 +15,29 @@ import time
 class MonitorEntry(object):
     pass
 
+class EmptyObjectWrapper(object):
+    # Support _asdict from namedtuple ...
+    def _asdict(self):
+        return dict()
+
+    # ... along with iteration (treated as an empty container)
+    def __iter__(self):
+        return self
+
+    def next(self):
+        raise StopIteration
+
 class MonitorExecutor(object):
     def __init__(self):
         self.entry = dict()
 
     def safe_psutil_measure(self, fptr):
         try:
-            return fptr()
+            tmp = fptr()
+            if tmp:
+                return tmp
         except psutil.AccessDenied:
-            return None
+            return EmptyObjectWrapper()
 
     def update(self, pid, ts, base):
         entry = MonitorEntry()
@@ -33,20 +47,24 @@ class MonitorExecutor(object):
         entry.cmd = " ".join(process.cmdline())
         entry.sent = base
         entry.start = time.time()
-        entry.memory =  self.safe_psutil_measure(psutil.virtual_memory)
-        entry.swap = self.safe_psutil_measure(psutil.swap_memory)
-        entry.cpu = self.safe_psutil_measure(psutil.cpu_times)
-        entry.disk = self.safe_psutil_measure(psutil.disk_io_counters)
-        entry.pmem = self.safe_psutil_measure(process.get_ext_memory_info)
+        entry.memory =  self.safe_psutil_measure(psutil.virtual_memory)._asdict()
+        entry.swap = self.safe_psutil_measure(psutil.swap_memory)._asdict()
+        entry.cpu = self.safe_psutil_measure(psutil.cpu_times)._asdict()
+        entry.disk = self.safe_psutil_measure(psutil.disk_io_counters)._asdict()
+        entry.pmem = self.safe_psutil_measure(process.get_ext_memory_info)._asdict()
         if hasattr(process, 'get_io_counters'):
-            entry.pdisk = self.safe_psutil_measure(process.get_io_counters)
+            entry.pdisk = self.safe_psutil_measure(process.get_io_counters)._asdict()
         else:
             entry.pdisk = dict()
-        entry.pcpu = self.safe_psutil_measure(process.get_cpu_times)
-        entry.pthreads = self.safe_psutil_measure(process.get_threads)
-        entry.ctx = self.safe_psutil_measure(process.get_num_ctx_switches)
-        # NOTE: This call is unsafe on OS/X.
-        # entry.mmaps = self.safe_psutil_measure(process.get_memory_maps)
+        entry.pcpu = self.safe_psutil_measure(process.get_cpu_times)._asdict()
+        tmp = self.safe_psutil_measure(process.get_threads)
+        entry.pthreads = []
+        if tmp:
+            for thread in tmp:
+                entry.pthreads.append(thread._asdict())
+        entry.ctx = self.safe_psutil_measure(process.get_num_ctx_switches)._asdict()
+        # NOTE: This call is unsafe (!) on OS/X.  That said, this may be useful on other platforms ...
+        # entry.mmaps = self.safe_psutil_measure(process.get_memory_maps)._asdict()
         entry.lag = entry.start - entry.sent
         self.entry = entry
 
@@ -61,13 +79,19 @@ class SnapshotConfig(object):
     channel_in = None
     channel_out = None
     pid_file = "/tmp/benchmark.pid"
+    first_entry = True
 
 class SnapshotCommands(object):
-    first_entry = True
     # A no-op to help us make sure things are set up correctly.
     @staticmethod
     def do_hi(cmd):
         pass
+
+    @staticmethod
+    def do_test(cmd):
+        SnapshotCommands.do_init(['init'])
+        SnapshotCommands.do_record(['record', os.getpid(), time.time(), time.time()])
+        SnapshotCommands.do_close(['close'])
 
     @staticmethod
     def do_init(cmd):
@@ -75,7 +99,7 @@ class SnapshotCommands(object):
         SnapshotConfig.first_entry = True
         SnapshotConfig.channel_out.seek(0)
         SnapshotConfig.channel_out.truncate()
-        SnapshotConfig.channel_out.write('"data" : [')
+        SnapshotConfig.channel_out.write('{ "data" : [')
         SnapshotConfig.channel_out.flush()
 
     @staticmethod
@@ -100,7 +124,7 @@ class SnapshotCommands(object):
     @staticmethod
     def do_close(cmd):
         print str(time.time()) + " [INFO] closing file at " + SnapshotConfig.path
-        SnapshotConfig.channel_out.write(']')
+        SnapshotConfig.channel_out.write(']}')
         SnapshotConfig.channel_out.flush()
 
     @staticmethod

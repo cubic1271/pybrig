@@ -6,7 +6,7 @@ new graduate degree is to have some data available upon which to base said paper
 gather performance data from bro as it executes against a particular trace.
 
 Note that this github project contains code only to handle the _collection_ of data.  It does not include code to visualize the
-results.  For that code (and instructions on its use), please take a look at TODO.
+results.  For that code (and instructions on its use), please take a look at _TODO_.
 
 Overview
 --------
@@ -15,6 +15,13 @@ The Python Bro Information Gatherer (PyBrIG) project aims to automate the proces
 a benchmark on a given system.  It aims to be cross-platform (targeted platforms are OSX 10.8+, FreeBSD 9+, and Linux 3.0+),
 simple (a single wrapper script to launch a benchmark), and relatively self-contained.  Additionally, the code in here is intended to be
 easily reusable / customizable for anyone interested in extending and / or replicating the benchmark process.
+
+Stability Warning
+-----------------
+
+This version may exhibit some instability during the data gathering process.  Please monitor /tmp/benchmark-snapshot.log: if no output
+goes to that log file for an extended period of time, please close the benchmark along with any running benchmark-snapshot.py processes,
+then restart the trial.
 
 Requirements
 ------------
@@ -42,15 +49,21 @@ pushd pybrig
 # Download / build dependencies we need to run stuff
 # Note: this only needs to be done once
 /path/to/python configure.py
-export LD_LIBRARY_PATH=/tmp/pybrig/env/lib
 # s/X.Y/Python.Version/g
 export PYTHONPATH=/tmp/pybrig/env/lib/pythonX.Y/site-packages:/tmp/pybrig/env/lib64/pythonX.Y/site-packages```
 export LD_LIBRARY_PATH=/tmp/pybrig/env/lib
 # Execute the information gathering script
 /path/to/python gather.py
+# Execute the recorder daemon
+/path/to/python util/benchmark-snapshot.py > /tmp/snapshot.log 2> /tmp/snapshot.log&
 # Execute the benchmark script
 /path/to/python benchmark.py
 ```
+
+Note that configure has a number of options to support packaging the dependencies necessary to run on a machine without
+an available internet connection.
+
+_TODO_: Example of how to configure on one machine to download packages, then move them to another box and execute there.
 
 The results of the gather / benchmark scripts are generated in JSON format.  These results can be reviewed and e.g.
 uploaded to something like ElasticSearch.

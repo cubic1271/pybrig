@@ -114,7 +114,7 @@ if __name__ == '__main__':
     capture = options.capture
 
     try:
-        os.mkdir(options.trial_dir)
+        os.makedirs(options.trial_dir)
     except OSError,ex:
         pass
 

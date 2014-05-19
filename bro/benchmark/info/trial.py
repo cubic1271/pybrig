@@ -119,7 +119,6 @@ class BenchmarkTrial(object):
         if(self.bare):
             args.append('-b')
 
-        args.append('policy/misc/profiling.bro')
         args.append('-r')
         args.append(self.capture)
 

@@ -198,7 +198,7 @@ if __name__ == '__main__':
                 print "Trial failed to execute: " + str(ex.stderr)
                 print "Output was: " + str(ex.stdout)
                 print ex.message
-                sys.exit(-1)
+                raise KeyboardInterrupt
             trial.pushd(os.path.join(trial.basedir, trial.name))
             shutil.copy(data['benchmark_log_path'], os.path.join(os.path.join(trial.basedir, trial.name), 'benchmark.json'))
             trial.popd()

@@ -40,33 +40,36 @@ class MonitorExecutor(object):
             return EmptyObjectWrapper()
 
     def update(self, pid, ts, base):
-        entry = MonitorEntry()
-        process = psutil.Process(pid)
-        entry.ts = ts
-        entry.pid = pid
-        entry.cmd = " ".join(process.cmdline())
-        entry.sent = base
-        entry.start = time.time()
-        entry.memory =  self.safe_psutil_measure(psutil.virtual_memory)._asdict()
-        entry.swap = self.safe_psutil_measure(psutil.swap_memory)._asdict()
-        entry.cpu = self.safe_psutil_measure(psutil.cpu_times)._asdict()
-        entry.disk = self.safe_psutil_measure(psutil.disk_io_counters)._asdict()
-        entry.pmem = self.safe_psutil_measure(process.get_ext_memory_info)._asdict()
-        if hasattr(process, 'get_io_counters'):
-            entry.pdisk = self.safe_psutil_measure(process.get_io_counters)._asdict()
-        else:
-            entry.pdisk = dict()
-        entry.pcpu = self.safe_psutil_measure(process.get_cpu_times)._asdict()
-        tmp = self.safe_psutil_measure(process.get_threads)
-        entry.pthreads = []
-        if tmp:
-            for thread in tmp:
-                entry.pthreads.append(thread._asdict())
-        entry.ctx = self.safe_psutil_measure(process.get_num_ctx_switches)._asdict()
-        # NOTE: This call is unsafe (!) on OS/X.  That said, this may be useful on other platforms ...
-        # entry.mmaps = self.safe_psutil_measure(process.get_memory_maps)._asdict()
-        entry.lag = entry.start - entry.sent
-        self.entry = entry
+        try:
+            entry = MonitorEntry()
+            process = psutil.Process(pid)
+            entry.ts = ts
+            entry.pid = pid
+            entry.cmd = " ".join(process.cmdline())
+            entry.sent = base
+            entry.start = time.time()
+            entry.memory =  self.safe_psutil_measure(psutil.virtual_memory)._asdict()
+            entry.swap = self.safe_psutil_measure(psutil.swap_memory)._asdict()
+            entry.cpu = self.safe_psutil_measure(psutil.cpu_times)._asdict()
+            entry.disk = self.safe_psutil_measure(psutil.disk_io_counters)._asdict()
+            entry.pmem = self.safe_psutil_measure(process.get_ext_memory_info)._asdict()
+            if hasattr(process, 'get_io_counters'):
+                entry.pdisk = self.safe_psutil_measure(process.get_io_counters)._asdict()
+            else:
+                entry.pdisk = dict()
+            entry.pcpu = self.safe_psutil_measure(process.get_cpu_times)._asdict()
+            tmp = self.safe_psutil_measure(process.get_threads)
+            entry.pthreads = []
+            if tmp:
+                for thread in tmp:
+                    entry.pthreads.append(thread._asdict())
+            entry.ctx = self.safe_psutil_measure(process.get_num_ctx_switches)._asdict()
+            # NOTE: This call is unsafe (!) on OS/X.  That said, this may be useful on other platforms ...
+            # entry.mmaps = self.safe_psutil_measure(process.get_memory_maps)._asdict()
+            entry.lag = entry.start - entry.sent
+            self.entry = entry
+        except psutil.NoSuchProcess:
+            self.entry = dict()
 
     def json(self):
         # Note: this includes nicely-formatted JSON.  This is good for debugging, but bad for file size.
@@ -104,13 +107,16 @@ class SnapshotCommands(object):
 
     @staticmethod
     def do_record(cmd):
-        print str(time.time()) + " [INFO] recording data to " + SnapshotConfig.path
+        # print str(time.time()) + " [INFO] recorded data to " + SnapshotConfig.path
         if len(cmd) != 4:
             sys.stderr.write(str(time.time()) + ' [ERROR] Bad `record` command: ' + str(cmd) + '\n')
             return
         monitor = MonitorExecutor()
         try:
             monitor.update(int(cmd[1]), float(cmd[2]), float(cmd[3]))
+            if not hasattr(monitor.entry, 'ts'):
+                sys.stderr.write("%s [WARN] Unable to retrieve process data.  Skipping request...\n" % time.time())
+                return
             if not SnapshotConfig.first_entry:
                 SnapshotConfig.channel_out.write(', ')
             else:
@@ -119,7 +125,7 @@ class SnapshotCommands(object):
         except psutil.AccessDenied:
             sys.stderr.write(str(time.time()) + ' [ERROR] Unable to open process - access denied\n')
         except RuntimeError:
-            sys.stderr.write(str(time.time()) + ' [ERROR] Runtime error.\n')
+            sys.stderr.write(str(time.time()) + ' [ERROR] Runtime error (unhandled, non-fatal).  Process will continue ...\n')
 
     @staticmethod
     def do_close(cmd):

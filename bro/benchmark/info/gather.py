@@ -164,8 +164,8 @@ class SystemInformation(object):
             self.modules.append(line.split(' ')[0])
 
         # Post-process: filter gathered data based on rules defined in gather.conf
-        for entry in self.sysctl.keys():
-            if not matcher.match(entry, self.modules[entry], 'modules'):
+        for entry in self.modules:
+            if not matcher.match(entry, entry, 'modules'):
                 del self.modules[entry]
 
     def gather_pcap(self):

@@ -114,6 +114,11 @@ if __name__ == '__main__':
     capture = options.capture
 
     try:
+        os.mkdir(options.trial_dir)
+    except OSError,ex:
+        print "INFO: Could not create trial directory: %s" % ex.stderr
+
+    try:
         import psutil
     except ImportError:
         print "'psutil' could not be found.  Is your PYTHONPATH set?"

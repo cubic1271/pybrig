@@ -1,11 +1,62 @@
-import sigar
+from ConfigParser import ConfigParser
 import sh
 from ctypes import CDLL
 from ctypes import c_char_p
 import ctypes.util as ctutil
-import psutil
-import uuid
 import json
+import os
+import re
+import uuid
+
+class OptionsEnabled:
+    SIGAR_ENABLED = False
+    PSUTIL_ENABLED = False
+
+try:
+    import sigar
+    OptionsEnabled.SIGAR_ENABLED = True
+    import psutil
+    OptionsEnabled.PSUTIL_ENABLED = True
+except ImportError:
+    print "Warning: unable to import sigar and / or psutil"
+    print "Gather will continue, but some information may not be available"
+    print ""
+    print "If using this script in conjunction with configure.py:"
+    print "Please ensure that configure.py has been run *AND* that PYTHONPATH has been set to include the following:"
+    print "* /path/to/pybrig/env/lib/python2.7/site-packages"
+    print "* /path/to/pybrig/env/lib64/python2.7/site-packages"
+    print ""
+    print "For example:"
+    print "export PYTHONPATH=/tmp/pybrig/env/lib/python2.7/site-packages:/tmp/pybrig/env/lib64/python2.7/site-packages"
+    print ""
+    print "Additionally, please be sure that LD_LIBRARY_PATH is set (e.g. to '/tmp/pybrig/env/lib') or that configure.py"
+    print "was told to install packages into a known location (e.g. a directory listed in ld.so.conf)"
+
+class ExcludeInfoMatcher(object):
+    def __init__(self):
+        self.parser = ConfigParser()
+        # No option conversion, since we're using the key as a regex here
+        self.parser.optionxform = str
+        cpath = os.path.realpath(__file__)
+        self.parser.read([os.path.join(os.path.dirname(cpath), 'privacy.conf'), './privacy.conf'])
+
+    def match(self, key, value, module, verbose=False):
+        match_include = False
+        match_exclude = False
+
+        if len(self.parser.items(module + ".include")) == 0 and verbose:
+            print "WARN: Matching against empty list of includes (for: " + module + ")"
+        for item in self.parser.items(module + ".include"):
+            if re.match(item[0], key) and re.match(item[1], value):
+                match_include = True
+
+        if len(self.parser.items(module + ".exclude")) == 0 and verbose:
+            print "WARN: Matching against empty list of excludes (for: " + module + ")"
+        for item in self.parser.items(module + ".exclude"):
+            if re.match(item[0], key) and re.match(item[1], value):
+                match_exclude = True
+
+        return (not match_exclude) and (match_include)
 
 class InterfaceInformation(object):
     def __init__(self, iface):
@@ -45,8 +96,31 @@ class SystemInformation(object):
         self.gather_modules()
         self.gather_pcap()
         self.gather_info()
+        self.gather_facter()
+
+    def gather_facter(self):
+        matcher = ExcludeInfoMatcher()
+        try:
+            facter = sh.facter.bake(_cwd='.')
+            self.facter = dict()
+        except sh.CommandNotFound:
+            return
+        last = ""
+        for line in facter(_iter=True):
+            if " => " in line:
+                res = line.split(" => ")
+                self.facter[res[0].strip()] = res[1].strip()
+                last = res[0]
+            elif last != "":
+                self.facter[last] += res[1].strip()
+
+        # Post-process: filter gathered data based on rules defined in gather.conf
+        for entry in self.facter.keys():
+            if not matcher.match(entry, self.facter[entry], 'facter'):
+                del self.facter[entry]
 
     def gather_sysctl(self):
+        matcher = ExcludeInfoMatcher()
         self.sysctl = dict()
         sysctl = sh.sysctl.bake(_cwd='.')
         last = ""
@@ -71,7 +145,13 @@ class SystemInformation(object):
                 elif last != "":
                     self.sysctl[last] += res[1].strip()
 
+        # Post-process: filter gathered data based on rules defined in gather.conf
+        for entry in self.sysctl.keys():
+            if not matcher.match(entry, self.sysctl[entry], 'sysctl'):
+                del self.sysctl[entry]
+
     def gather_modules(self):
+        matcher = ExcludeInfoMatcher()
         if(sh.uname().strip() != "Linux"):
             return
         self.modules = []
@@ -83,6 +163,11 @@ class SystemInformation(object):
                 continue
             self.modules.append(line.split(' ')[0])
 
+        # Post-process: filter gathered data based on rules defined in gather.conf
+        for entry in self.sysctl.keys():
+            if not matcher.match(entry, self.modules[entry], 'modules'):
+                del self.modules[entry]
+
     def gather_pcap(self):
         pcap_location = ctutil.find_library('pcap')
         if(pcap_location):
@@ -93,18 +178,25 @@ class SystemInformation(object):
             self.pcap_version = "(none)"
 
     def gather_info(self):
-        self.cpus = []
-        info = sigar.open()
-        list = info.cpu_info_list()
-        for val in list:
-            self.cpus.append(CpuInformation(val))
-        list = info.net_interface_list()
-        for val in list:
-            curr = info.net_interface_config(val)
-            self.interfaces.append(InterfaceInformation(curr))
-        info.close()
-        self.memory = psutil.TOTAL_PHYMEM
-        self.partitions = psutil.disk_partitions()
+        matcher = ExcludeInfoMatcher()
+        if OptionsEnabled.SIGAR_ENABLED:
+            self.cpus = []
+            info = sigar.open()
+            list = info.cpu_info_list()
+            for val in list:
+                self.cpus.append(CpuInformation(val))
+            list = info.net_interface_list()
+            for val in list:
+                curr = info.net_interface_config(val)
+                tmp = InterfaceInformation(curr)
+                for each in ['address', 'address6', 'hwaddr', 'netmask', 'name']:
+                    if not matcher.match(each, getattr(tmp, each), 'interfaces'):
+                        delattr(tmp, each)
+                self.interfaces.append(tmp)
+            info.close()
+        if OptionsEnabled.PSUTIL_ENABLED:
+            self.memory = psutil.TOTAL_PHYMEM
+            self.partitions = psutil.disk_partitions()
         self.uuid = str(uuid.uuid1())
 
     def json(self):

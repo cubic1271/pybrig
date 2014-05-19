@@ -1,14 +1,46 @@
 __author__ = 'clarkg1'
 
-from mako.template import Template
-
 import json
 import os
-import psutil
 import sh
+import shutil
+import sys
 import threading
 import time
 import uuid
+
+# TODO: Violating DRY because I'm too lazy to think about how to do this better ... :/
+
+class OptionsEnabled:
+    PSUTIL_ENABLED = False
+    MAKO_ENABLED = False
+
+def import_error(item):
+    print "Warning: unable to import `" + str(item) + "`"
+    print "This is a fatal error, and this script will therefore terminate"
+    print ""
+    print "If using this script in conjunction with configure.py:"
+    print "Please ensure that configure.py has been run *AND* that PYTHONPATH has been set to include the following:"
+    print "* /path/to/pybrig/env/lib/python2.7/site-packages"
+    print "* /path/to/pybrig/env/lib64/python2.7/site-packages"
+    print ""
+    print "For example:"
+    print "export PYTHONPATH=/tmp/pybrig/env/lib/python2.7/site-packages:/tmp/pybrig/env/lib64/python2.7/site-packages"
+    print ""
+    print "Additionally, please be sure that LD_LIBRARY_PATH is set (e.g. to '/tmp/pybrig/env/lib') or that configure.py"
+    print "was told to install packages into a known location (e.g. a directory listed in ld.so.conf)"
+    sys.exit(-1)
+
+try:
+    import psutil
+    OptionsEnabled.PSUTIL_ENABLED = True
+except ImportError:
+    import_error("psutil")
+try:
+    from mako.template import Template
+    OptionsEnabled.MAKO_ENABLED = True
+except ImportError:
+    import_error("mako")
 
 class TrialInfo(object):
     def __init__(self, uuid, name):
@@ -27,60 +59,6 @@ class BenchmarkInfo(object):
 
     def json(self):
         return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=4)
-
-class MonitorEntry(object):
-    pass
-
-class MonitorThread(object):
-    def __init__(self, frequency = 0.5, do_suspend = True):
-        self.entries = dict()
-        self.keeprunning = True
-        self.frequency = frequency
-        self.do_suspend = do_suspend
-
-    def safe_psutil_measure(self, fptr):
-        try:
-            return fptr()
-        except psutil.AccessDenied:
-            return None
-
-    def run(self, pid, uuid):
-        # Normally this wouldn't be safe, but the GIL fixes it for us ...
-        process = psutil.Process(pid)
-        self.entries['cmd'] = " ".join(process.cmdline)
-        self.entries['start'] = time.time()
-        self.entries['trial_id'] = str(uuid)
-        self.entries['data'] = []
-        while self.keeprunning:
-            try:
-                curr = MonitorEntry()
-                curr.memory =  self.safe_psutil_measure(psutil.virtual_memory)
-                curr.swap = self.safe_psutil_measure(psutil.swap_memory)
-                curr.cpu = self.safe_psutil_measure(psutil.cpu_times)
-                curr.disk = self.safe_psutil_measure(psutil.disk_io_counters)
-                curr.ts = time.time()
-                # So we don't end up getting tearing across our results, put the process to sleep before
-                # we gather current information.
-                if self.do_suspend:
-                    process.suspend()
-                curr.pmem = self.safe_psutil_measure(process.get_ext_memory_info)
-                if hasattr(process, 'get_io_counters'):
-                    curr.pdisk = self.safe_psutil_measure(process.get_io_counters)
-                curr.pcpu = self.safe_psutil_measure(process.get_cpu_times)
-                curr.pthreads = self.safe_psutil_measure(process.get_threads)
-                curr.ctx = self.safe_psutil_measure(process.get_num_ctx_switches)
-                mmaps = self.safe_psutil_measure(process.get_memory_maps)
-                for curr_map in mmaps:
-                    if(curr_map.path == "[heap]"):
-                        curr.heap_size = curr_map.rss
-                    if(curr_map.path == "[stack]"):
-                        curr.stack_size = curr_map.rss
-                if self.do_suspend:
-                    process.resume()
-                self.entries['data'].append(curr)
-                time.sleep(self.frequency)
-            except psutil.NoSuchProcess:
-                self.keeprunning = False
 
 class BenchmarkTrial(object):
     def __init__(self, basedir, template, bro, capture, realtime=False, bare=False, scripts=[]):
@@ -109,7 +87,7 @@ class BenchmarkTrial(object):
     def json(self):
         return json.dumps(self.results, default=lambda o: o.__dict__, sort_keys=True, indent=4)
 
-    def execute(self, name, params):
+    def execute(self, name, params, callback=None):
         self.uuid = uuid.uuid4()
         self.params = params
         # print "Opening template " + os.path.join(os.getcwd(), os.path.join('templates', self.template))
@@ -123,8 +101,9 @@ class BenchmarkTrial(object):
             # print "Removing existing output directory: " + os.path.join(os.getcwd(), name)
             sh.rm('-fr', name)
         os.mkdir(name)
-        # Render execution script template ...
         self.pushd(name)
+
+        # Render execution script template ...
         out_script = run_script.render(**self.params)
         # print "Launching trial in directory: " + os.getcwd()
         out_file = open(self.template, 'w')
@@ -140,20 +119,18 @@ class BenchmarkTrial(object):
         if(self.bare):
             args.append('-b')
 
+        args.append('policy/misc/profiling.bro')
         args.append('-r')
         args.append(self.capture)
 
         map(lambda x: args.append(x), self.scripts)
 
-        monitor = MonitorThread()
         # print "Launching bro ... "
         process = self.bro(args, _bg=True)
-        monitor_thread = threading.Thread(target = monitor.run, args = (process.pid, str(self.uuid), ))
-        monitor_thread.start()
         process.wait()
-        monitor.keeprunning = False
-        monitor_thread.join()
-        self.results = monitor.entries
+
+        if callback:
+            callback(self)
 
         sh.rm('-f', sh.glob('*.log'))
 

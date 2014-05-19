@@ -30,6 +30,10 @@ class BuildConfiguration(object):
         self.pushd(os.path.join(self.dirname, self.buildpath))
         tmpenv = os.environ.copy()
         target = '.'.join(platform.python_version().split('.')[0:2])
+        # OS X workaround: prevent error on unrecognized arguments.
+        tmpenv['CPPFLAGS'] = '-Qunused-arguments'
+        tmpenv['CFLAGS'] = '-Qunused-arguments'
+        # Set appropriate python path.
         tmpenv['PYTHONPATH'] = self.prefix + '/lib/python' + target + '/site-packages:' + \
                                self.prefix + '/lib64/python' + target + '/site-packages'
         sh.python("setup.py", "install", "--prefix=" + self.prefix, _env=tmpenv)
@@ -155,7 +159,11 @@ def build_sigar_python(target):
     target.pushd(os.path.join(target.dirname, target.buildpath))
     target.pushd('bindings')
     target.pushd('python')
-    sh.python("setup.py", "--with-sigar="+target.prefix, "install", "--prefix="+target.prefix)
+    tmpenv = os.environ.copy()
+    tmpenv['CPPFLAGS'] = '-Qunused-arguments'
+    tmpenv['CFLAGS'] = '-Qunused-arguments'    
+    
+    sh.python("setup.py", "--with-sigar="+target.prefix, "install", "--prefix="+target.prefix, _env=tmpenv)
     target.popd()
     target.popd()
     target.popd()

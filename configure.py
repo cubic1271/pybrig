@@ -12,6 +12,7 @@ if __name__ == '__main__':
     src_dir = "/tmp/pybrig/src"
 
     parser = OptionParser()
+    parser.add_option("-d", "--detailed-profile", action="store_true", dest="detailed", help="Pulls down a (highly experimental) branch that outputs additional profiling information when running bro", default=False)
     parser.add_option("-p", "--prefix", action="store", dest="prefix", help="Benchmark packages are installed into this directory path.", default=install_dir, metavar="INSTALL_DIR")
     parser.add_option("-s", "--srcdir", action="store", dest="srcdir", help="Benchmark packages are downloaded into and built in this directory path.", default=src_dir, metavar="SOURCE_DIR")
     parser.add_option("-R", "--no-retrieve", action="store_true", dest="no_retrieve", help="Do not try to retrieve dependencies.  Instead, only try to build them.", default=False)
@@ -58,7 +59,7 @@ if __name__ == '__main__':
     print "Starting run ..."
 
     print "Executing jobs for mako ..."
-    mako = build.FileBuildConfiguration('http://www.makotemplates.org/downloads/Mako-0.8.1.tar.gz', os.path.join(src_dir, 'mako'))
+    mako = build.FileBuildConfiguration('https://pypi.python.org/packages/source/M/Mako/Mako-0.8.1.tar.gz', os.path.join(src_dir, 'mako'))
     mako.prefix = install_dir
     mako.do_build = not options.no_build
     mako.do_retrieve = not options.no_retrieve
@@ -66,7 +67,7 @@ if __name__ == '__main__':
     result = mako.pybuild()
 
     print "Executing jobs for psutil ..."
-    psutil = build.FileBuildConfiguration('http://psutil.googlecode.com/files/psutil-1.0.1.tar.gz', os.path.join(src_dir, 'psutil'))
+    psutil = build.FileBuildConfiguration('https://pypi.python.org/packages/source/p/psutil/psutil-2.0.0.tar.gz#md5=9ee83ff3d68396f91ebdf71ae83b152d', os.path.join(src_dir, 'psutil'))
     psutil.prefix = install_dir
     psutil.do_build = not options.no_build
     psutil.do_retrieve = not options.no_retrieve
@@ -91,8 +92,12 @@ if __name__ == '__main__':
     ipsumdump.prefix = install_dir
     result = ipsumdump.autobuild()
 
-    print "Executing jobs for bro (benchmark patch) ..."
-    bro = build.GitBuildConfiguration('https://github.com/cubic1271/bro', os.path.join(src_dir, 'bro'))
+    if options.detailed:
+        print "Executing jobs for bro (benchmark patch) ..."
+        bro = build.GitBuildConfiguration('https://github.com/cubic1271/bro', os.path.join(src_dir, 'bro'))
+    else:
+        print "Executing jobs for bro (vanilla, master) ..."
+        bro = build.GitBuildConfiguration('https://github.com/bro/bro', os.path.join(src_dir, 'bro'))
 
     bro.do_build = not options.no_build
     bro.do_retrieve = not options.no_retrieve
@@ -102,7 +107,7 @@ if __name__ == '__main__':
         print "Fetching source ..."
     bro.retrieve()
 
-    if not options.no_retrieve:
+    if not options.no_retrieve and options.detailed:
         bro.pushd(os.path.join(bro.dirname, 'cmake'))
         bro.checkout('topic/robin/papi')
         bro.merge('master')

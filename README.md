@@ -16,12 +16,13 @@ a benchmark on a given system.  It aims to be cross-platform (targeted platforms
 simple (a single wrapper script to launch a benchmark), and relatively self-contained.  Additionally, the code in here is intended to be
 easily reusable / customizable for anyone interested in extending and / or replicating the benchmark process.
 
-Stability Warning
------------------
+Stability Note
+--------------
 
-This version may exhibit some instability during the data gathering process.  Please monitor /tmp/benchmark-snapshot.log: if no output
-goes to that log file for an extended period of time, please close the benchmark along with any running benchmark-snapshot.py processes,
-then restart the trial.
+To work around issues with managing the recorder daemon as part of the benchmark process, starting that daemon has been moved into
+its own step in the process below.  With that said, please keep an eye on /tmp/snapshot.log: if it goes too long without updates, it
+could be that the bro process / python has lost the FIFO and can't get it back, which will cause the bro process to hang on write
+once the FIFO buffer is full.
 
 Requirements
 ------------
@@ -58,6 +59,8 @@ export LD_LIBRARY_PATH=/tmp/pybrig/env/lib
 /path/to/python util/benchmark-snapshot.py > /tmp/snapshot.log 2> /tmp/snapshot.log&
 # Execute the benchmark script
 /path/to/python benchmark.py
+# Tell the recorder daemon it can shut down
+echo 'exit' > /tmp/benchmark.fifo
 ```
 
 Note that configure has a number of options to support packaging the dependencies necessary to run on a machine without

@@ -116,7 +116,7 @@ if __name__ == '__main__':
     try:
         os.mkdir(options.trial_dir)
     except OSError,ex:
-        print "INFO: Could not create trial directory: %s" % ex.stderr
+        pass
 
     try:
         import psutil

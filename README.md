@@ -30,6 +30,7 @@ available.  If 'sh' is not present, try:
 
 ```
 /path/to/pip install sh
+```
 
 Running a Benchmark
 -------------------
@@ -49,6 +50,7 @@ export LD_LIBRARY_PATH=/tmp/pybrig/env/lib
 /path/to/python gather.py
 # Execute the benchmark script
 /path/to/python benchmark.py
+```
 
 The results of the gather / benchmark scripts are generated in JSON format.  These results can be reviewed and e.g.
 uploaded to something like ElasticSearch.
@@ -78,6 +80,7 @@ This file consists of a number of sections that appear as follows:
 .*:.*
 [X.exclude]
 .*:.*
+```
 
 Each section of the above file [X.include, X.exclude] is defined to be a list of _Allow / Deny Rules_ that govern which pieces
 of information are included in the output.  The portion on the left side of the ':' refers to the 'name' of the entry, and
@@ -93,6 +96,7 @@ As an example, say we only wanted to include entries from sysctl that had 'ip' s
 [sysctl.include]
 .*ip.*:.*
 [sysctl.exclude]
+```
 
 Alternatively, say we wanted to include entries from sysctl that had a value that began with '1'.  Our rule set would be:
 
@@ -100,12 +104,15 @@ Alternatively, say we wanted to include entries from sysctl that had a value tha
 [sysctl.include]
 .*:1.*
 [sysctl.exclude]
+```
 
 If we wanted entries from the 'ip' section of sysctl that had a value that started with '1', these rules could be combined:
 
 ```
 [sysctl.include]
 .*ip.*:1.*
+[sysctl.exclude]
+```
 
 Note that the 'interfaces' section is a special one, and consists of the following keys:
 

@@ -3,7 +3,6 @@ __author__ = 'clarkg1'
 import os
 import json
 import optparse
-import shutil
 import sys
 try:
     import psutil

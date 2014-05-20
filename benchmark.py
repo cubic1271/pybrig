@@ -211,6 +211,3 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         print ""
         print "*** Benchmark aborted.  Current trial at time of termination: %s" % trial.name
-
-    print "Shutting down recorder process ..."
-

@@ -106,6 +106,7 @@ There is a script provided at 'util/upload.py' which automates the upload of ben
 ```bash
 /path/to/python util/upload.py      # to review a list of files that will be pushed onto an ES instance
 /path/to/python util/upload.py -e   # to actually *execute* the upload of the listed files
+```
 
 Privacy
 -------

@@ -16,6 +16,33 @@ a benchmark on a given system.  It aims to be cross-platform (targeted platforms
 simple (a single wrapper script to launch a benchmark), and relatively self-contained.  Additionally, the code in here is intended to be
 easily reusable / customizable for anyone interested in extending and / or replicating the benchmark process.
 
+Architecture
+------------
+
+This project is divided into four different run-time components:
+
+* configure.py - a convenience script that will download / build various dependencies for the benchmark.  Running this is not *required*,
+but may serve to make the benchmark easier to start with than it otherwise would be.  Note that this script offers a way to download and
+package scripts without actually installing them, and also offers a way to build from a pre-built package (e.g. in the event that a machine
+is not connected to a network, the benchmark can still be configured and run).
+* gather.py - a script that gathers as much system information as it is able to.  It makes calls to SIGAR (if present), psutil (if present),
+puppet's facter binary (if present), sysctl, and lsmod.  Between these five libraries, it's possible to get a pretty complete picture of
+a system.
+* benchmark.py - a script that actually executes a benchmark on a system.  This injects a bro script that configures / runs various bits of
+internal profiling to gather information about the running bro process and record it to a log.  The bro script also communicates with an
+external process (via FIFO) that will record additional statistics about the program.
+* util/benchmark-snapshot.py - the external entity that listens for commands to come in to a FIFO and records data.  This operates on
+simple ASCII commands: 'init', 'record <PID> <network_time> <real_time>', 'close', and 'exit' are supported.
+
+These four components are built on top of four small-ish libraries:
+
+* benchmark.info.build - a wrapper that is able to download and build code from either git or .tar.(gz|bz2)
+* benchmark.info.gather - a wrapper that abstracts a lot of the data collection into something reusable
+* benchmark.info.trial - a wrapper that abstracts much of the details involved with running a single trial
+* benchmark.prof.parse - a parser that offers a simple interface to dealing with prof.log data
+
+benchmark.py could probably see a lot of its code refactored and pulled out into the library.
+
 Stability Note
 --------------
 
@@ -36,7 +63,7 @@ Please consult the bro documentation for an up-to-date explanation of what is re
 Executing all utilities (including configure.py) requires Python 2.6+ with a working installation of the 'sh' module
 available.  If 'sh' is not present, try:
 
-```
+```bash
 /path/to/pip install sh
 ```
 
@@ -70,6 +97,15 @@ _TODO_: Example of how to configure on one machine to download packages, then mo
 
 The results of the gather / benchmark scripts are generated in JSON format.  These results can be reviewed and e.g.
 uploaded to something like ElasticSearch.
+
+Uploading results
+-----------------
+
+There is a script provided at 'util/upload.py' which automates the upload of benchmark results to an ElasticSearch instance.  To use this script:
+
+```bash
+/path/to/python util/upload.py      # to review a list of files that will be pushed onto an ES instance
+/path/to/python util/upload.py -e   # to actually *execute* the upload of the listed files
 
 Privacy
 -------

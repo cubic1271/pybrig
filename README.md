@@ -176,6 +176,11 @@ Note that the 'interfaces' section is a special one, and consists of the followi
 
 Note that the above corresponds with the output of the 'interfaces' information as displayed by gather.py
 
+Acknowledgments
+---------------
+
+* Robin Sommer for his continued guidance, assistance, and thoughtful feedback on this project.
+
 Contributing
 ------------
 

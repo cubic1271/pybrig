@@ -1,3 +1,4 @@
+import getpass
 import optparse
 import os
 import sh
@@ -12,11 +13,13 @@ if __name__ == '__main__':
     parser.add_option("-u", "--url", action="store", dest="url", help="Destination host (defaults to 'http://127.0.0.1:9200')", default='http://127.0.0.1:9200', metavar='URL')
     parser.add_option("-t", "--trial-path", action="store", dest="trial_path", help="Path to the output from a benchmark run", default="/tmp/pybrig/trials")
     parser.add_option("-s", "--sysdata-path", action="store", dest="sysdata_path", help="Path to the output from gather.py", default=None)
-
+    parser.add_option("-a", "--basic-auth", action="store_true", dest="auth", help="Prompt for credentials and forward as HTTP basic", default=False)
+    parser.add_option("-i", "--target-index", action="store", dest="index", help="Upload results to the ES index specified here", default="benchmark")
+    
     (options, args) = parser.parse_args()
 
     target = options.url
-    index_name = "benchmark"
+    index_name = options.index
     file_mapping = dict({'benchmark.json':'benchmark', 'prof.json':'profile'})
     trial_base = options.trial_path
     sysdata_path = options.sysdata_path
@@ -64,6 +67,10 @@ if __name__ == '__main__':
     if not options.execute:
         sys.exit(0)
 
+    if options.auth:
+        user = getpass.getuser()
+        pwd = getpass.getpass()
+
     curl = Curl()
     curl.put = sh.Command('curl').bake('-XPUT', '-H', 'Content-Type: application/json')
     curl.delete = sh.Command('curl').bake('-XDELETE', '-H', 'Content-Type: application/json')
@@ -92,4 +99,3 @@ if __name__ == '__main__':
         print "Uploading %s/%s" % (type_target, upload_target)
         res = curl.put('-d', '@%s' % entry, '%s/%s/%s' % (index_path, type_target, upload_target))
         print res
-    

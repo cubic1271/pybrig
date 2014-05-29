@@ -75,7 +75,7 @@ if __name__ == '__main__':
     result = psutil.pybuild()
 
     print "Executing jobs for SIGAR ..."
-    sigar = build.GitBuildConfiguration('https://github.com/hyperic/sigar', os.path.join(src_dir, 'sigar'))
+    sigar = build.GitBuildConfiguration('https://github.com/cubic1271/sigar', os.path.join(src_dir, 'sigar'))
     sigar.do_retrieve = not options.no_retrieve
     sigar.do_build = not options.no_build
     sigar.autoconf = True

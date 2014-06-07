@@ -106,9 +106,6 @@ if __name__ == '__main__':
         parser.print_help()
         sys.exit(-1)
 
-    if os.getenv("LD_LIBRARY_PATH", None) and os.getenv("LD_LIBRARY_PATH", None) != os.path.join(options.prefix, '/lib'):
-        print "WARNING: Your LD_LIBRARY_PATH does not include '" + os.path.join(options.prefix, '/lib') + "'.  If this path is non-standard, certain imported libraries may not work properly."
-
     prefix = options.prefix
     trial_dir = options.trial_dir
     capture = options.capture

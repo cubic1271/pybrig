@@ -169,7 +169,7 @@ def build_sigar_python(target):
         tmpenv['CPPFLAGS'] = '-Qunused-arguments'
         tmpenv['CFLAGS'] = '-Qunused-arguments'    
 
-    try:    
+    try:
         sh.python("setup.py", "--with-sigar="+target.prefix, "install", "--prefix="+target.prefix, _env=tmpenv)
     except sh.ErrorReturnCode,ex:
         print "Unable to build SIGAR python extensions: %s" % ex.stderr

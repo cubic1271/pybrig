@@ -172,6 +172,9 @@ if __name__ == '__main__':
 
     print "%s [INFO] Process (%s) spinning up ..." % (time.time(), os.getpid())
 
+    if os.path.exists(options.fifo):
+        print "%s [INFO] Removing existing FIFO at %s" % (time.time(), options.fifo)
+
     if not os.path.exists(options.fifo):
         print "%s [INFO] Creating new FIFO at %s" % (time.time(), options.fifo)
         os.mkfifo(options.fifo)

@@ -64,7 +64,7 @@ Executing all utilities (including configure.py) requires Python 2.6+ with a wor
 available.  If 'sh' is not present, try:
 
 ```bash
-/path/to/pip install sh
+/usr/bin/env pip install sh
 ```
 
 Running a Benchmark
@@ -76,16 +76,16 @@ git clone https://github.com/cubic1271/pybrig ./pybrig
 pushd pybrig
 # Download / build dependencies we need to run stuff
 # Note: this only needs to be done once
-/path/to/python configure.py
+/usr/bin/env python configure.py
 # s/X.Y/Python.Version/g
 export PYTHONPATH=/tmp/pybrig/env/lib/pythonX.Y/site-packages:/tmp/pybrig/env/lib64/pythonX.Y/site-packages```
 export LD_LIBRARY_PATH=/tmp/pybrig/env/lib
 # Execute the information gathering script
-/path/to/python gather.py
+/usr/bin/env python gather.py
 # Execute the recorder daemon
-/path/to/python util/benchmark-snapshot.py > /tmp/snapshot.log 2> /tmp/snapshot.log&
+/usr/bin/env python util/benchmark-snapshot.py > /tmp/snapshot.log 2> /tmp/snapshot.log&
 # Execute the benchmark script
-/path/to/python benchmark.py
+/usr/bin/env python benchmark.py
 # Tell the recorder daemon it can shut down
 echo 'exit' > /tmp/benchmark.fifo
 ```
@@ -104,8 +104,8 @@ Uploading results
 There is a script provided at 'util/upload.py' which automates the upload of benchmark results to an ElasticSearch instance.  To use this script:
 
 ```bash
-/path/to/python util/upload.py      # to review a list of files that will be pushed onto an ES instance
-/path/to/python util/upload.py -e   # to actually *execute* the upload of the listed files
+/usr/bin/env python util/upload.py      # to review a list of files that will be pushed onto an ES instance
+/usr/bin/env python util/upload.py -e   # to actually *execute* the upload of the listed files
 ```
 
 Privacy

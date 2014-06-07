@@ -37,8 +37,9 @@ class ExcludeInfoMatcher(object):
         self.parser = ConfigParser()
         # No option conversion, since we're using the key as a regex here
         self.parser.optionxform = str
+        self.ostype = sh.uname().strip()
         cpath = os.path.realpath(__file__)
-        self.parser.read([os.path.join(os.path.dirname(cpath), 'privacy.conf'), './privacy.conf'])
+        self.parser.read([os.path.join(os.path.dirname(cpath), '%s.privacy.conf' % self.ostype), './%s.privacy.conf' % self.ostype])
 
     def match(self, key, value, module, verbose=False):
         match_include = False
@@ -57,6 +58,16 @@ class ExcludeInfoMatcher(object):
                 match_exclude = True
 
         return (not match_exclude) and (match_include)
+
+    def enabled(self, target):
+        items_enabled = self.parser.items("output.enabled")
+        if len(items_enabled) == 0:
+            print "WARN: No output.enabled entries found in privacy.conf.  Most output will be disabled as a result."
+        for item in items_enabled:
+            if item[0] == target:
+                if item[1] != "true" and item[1] != "false":
+                    print "Invalid setting for %s: '%s'" % (item[0], item[1])
+                return item[1] == "true"
 
 class InterfaceInformation(object):
     def __init__(self, iface):
@@ -100,6 +111,9 @@ class SystemInformation(object):
 
     def gather_facter(self):
         matcher = ExcludeInfoMatcher()
+        if not matcher.enabled('facter'):
+            return
+
         try:
             facter = sh.facter.bake(_cwd='.')
             self.facter = dict()
@@ -121,6 +135,9 @@ class SystemInformation(object):
 
     def gather_sysctl(self):
         matcher = ExcludeInfoMatcher()
+        if not matcher.enabled('sysctl'):
+            return
+
         self.sysctl = dict()
         sysctl = sh.sysctl.bake(_cwd='.')
         last = ""
@@ -152,6 +169,9 @@ class SystemInformation(object):
 
     def gather_modules(self):
         matcher = ExcludeInfoMatcher()
+        if not matcher.enabled('modules'):
+            return
+        
         if(sh.uname().strip() != "Linux"):
             return
         self.modules = []
@@ -185,18 +205,22 @@ class SystemInformation(object):
             list = info.cpu_info_list()
             for val in list:
                 self.cpus.append(CpuInformation(val))
-            list = info.net_interface_list()
-            for val in list:
-                curr = info.net_interface_config(val)
-                tmp = InterfaceInformation(curr)
-                for each in ['address', 'address6', 'hwaddr', 'netmask', 'name']:
-                    if not matcher.match(each, getattr(tmp, each), 'interfaces'):
-                        delattr(tmp, each)
-                self.interfaces.append(tmp)
+            if matcher.enabled('interfaces'):
+                list = info.net_interface_list()
+                for val in list:
+                    curr = info.net_interface_config(val)
+                    tmp = InterfaceInformation(curr)
+                    for each in ['address', 'address6', 'hwaddr', 'netmask', 'name']:
+                        if not matcher.match(each, getattr(tmp, each), 'interfaces'):
+                            delattr(tmp, each)
+                    self.interfaces.append(tmp)
+            else:
+                del self.interfaces
             info.close()
         if OptionsEnabled.PSUTIL_ENABLED:
             self.memory = psutil.TOTAL_PHYMEM
-            self.partitions = psutil.disk_partitions()
+            if matcher.enabled('partitions'):
+                self.partitions = psutil.disk_partitions()
         self.uuid = str(uuid.uuid1())
 
     def json(self):

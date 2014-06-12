@@ -23,7 +23,7 @@ class CurlConfig(object):
             coutput += "user = %s\n" % self.user
         coutput += "\n"
         self.output.append(coutput)
-        self.desc.append("%s %s" % (method, url))
+        self.desc.append("%s %s [@%s]" % (method, url, path))
 
     def put(self, url, path):
         self.request(url, "PUT", path=path)

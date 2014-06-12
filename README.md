@@ -6,7 +6,9 @@ new graduate degree is to have some data available upon which to base said paper
 gather performance data from bro as it executes against a particular trace.
 
 Note that this github project contains code only to handle the _collection_ of data.  It does not include code to visualize the
-results.  For that code (and instructions on its use), please take a look at _TODO_.
+results.  For an example of such code (and basic instructions on its use), please take a look at:
+
+https://github.com/cubic1271/pybrig-vis
 
 Overview
 --------
@@ -218,25 +220,48 @@ Uploading Results
 -----------------
 
 There is a script in the 'util' folder called 'upload.py'.  This script will assemble all the files that were generated
-as part of a benchmark and upload them to an ElasticSearch server somewhere on the internet.
+as part of a benchmark and upload them to a server somewhere on the internet.  While ElasticSearch is assumed, anything
+that supports the listed operations would work just fine.
 
-I have a server available at https://shadow-of-enlightenment.com/es that is accepting benchmark data, but accessing this
-server will require first getting in touch to set up a valid set of credentials to use for the upload.  Please contact
-gc355804 (at) ohio _dot_ edu, and I'll do my best to help you get set up.
+This script has three modes:
+
+* Print a list of operations that will be performed and files that will be uploaded (default), but do not actually do anything
+* Actually execute the upload ('-e' option)
+* Dump the *content* of all files to be uploaded to stdout (to facilitate things like 'grep' when searching for data
+that might be bad)
+
+For example, to list files that would be uploaded to localhost:
+
+```bash
+/usr/bin/env python util/upload.py
+```
+
+To actually execute this upload:
+
+```bash
+/usr/bin/env python util/upload.py -e
+```
+
+To dump the contents of all files that are to be uploaded:
+
+```bash
+/usr/bin/env python util/upload.py -d
+```
 
 If the server hosting the data is protected by HTTP basic (a common configuration for publicly accessible information),
 then the '-a' option may be passed to the script.  The script will then prompt for credentials and use those when
 submitting the updated data to the server.
 
-Note that this script is a thin wrapper for curl: it generates a valid curl configuration, and performs the upload
-by executing curl against that configuration.
+I do have a server available at https://shadow-of-enlightenment.com/es that can accept benchmark data, but accessing this
+server will require first getting in touch to set up a valid set of credentials to use for the upload.  Please contact
+gc355804 (at) ohio _dot_ edu, and I'll do my best to help you get set up.
+
+Note that this script is a thin wrapper for curl: it generates a set of curl configurations ('-K'), and performs the
+upload by executing curl against each generated configuration.  Note that, since these configuration files may contain
+passwords, the configurations are never written to disk: instead, they are passed to curl via '-K -' and writing the
+contents of the configuration files to stdin.
 
 Acknowledgments
 ---------------
 
 * Robin Sommer for his continued guidance, assistance, and thoughtful feedback on this project.
-
-Contributing
-------------
-
-TODO

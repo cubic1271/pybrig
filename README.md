@@ -257,9 +257,9 @@ server will require first getting in touch to set up a valid set of credentials 
 gc355804 (at) ohio _dot_ edu, and I'll do my best to help you get set up.
 
 Note that this script is a thin wrapper for curl: it generates a set of curl configurations ('-K'), and performs the
-upload by executing curl against each generated configuration.  Note that, since these configuration files may contain
-passwords, the configurations are never written to disk: instead, they are passed to curl via '-K -' and writing the
-contents of the configuration files to stdin.
+upload by executing curl against each generated configuration.  With that said, since these configuration files may contain
+passwords, the configurations are never written to disk.  Instead, they are passed to curl via stdin by including '-K -'
+in the list of parameters used when calling curl.
 
 Acknowledgments
 ---------------

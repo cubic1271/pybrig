@@ -19,12 +19,17 @@ class PcapFetchPrompt(cmd.Cmd):
     def __init__(self):
         cmd.Cmd.__init__(self)
 
+    def do_ls(self, arg):
+        """Alias for 'list'"""
+        self.do_list(arg)
+
     def do_list(self, arg):
         """List of available packet captures"""
         for capture in pcaplist:
             print "%s - %s  [%s]" % (capture.name, capture.description, capture.url)
 
     def do_EOF(self, arg):
+        """Handler for EOF event"""
         print ""
         self.do_exit(arg)
 

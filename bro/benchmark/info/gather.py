@@ -149,7 +149,7 @@ class SystemInformation(object):
                     self.sysctl[res[0].strip()] = res[1].strip()
                     last = res[0]
                 elif last != "":
-                    self.sysctl[last] += res[1].strip()
+                    self.sysctl[last] += line.strip()
             elif os_name == "Darwin":
                 if " = " in line:
                     res = line.split(" = ")
@@ -160,7 +160,14 @@ class SystemInformation(object):
                     self.sysctl[res[0].strip()] = res[1].strip()
                     last = res[0].strip()
                 elif last != "":
-                    self.sysctl[last] += res[1].strip()
+                    self.sysctl[last] += line.strip()
+            elif os_name == "FreeBSD":
+                if ": " in line:
+                    res = line.split(": ")
+                    self.sysctl[res[0].strip()] = res[1].strip()
+                    last = res[0].strip()
+                elif last != "":
+                    self.sysctl[last] += line.strip()
 
         # Post-process: filter gathered data based on rules defined in gather.conf
         for entry in self.sysctl.keys():

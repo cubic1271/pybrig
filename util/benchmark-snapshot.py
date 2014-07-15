@@ -44,7 +44,9 @@ class MonitorExecutor(object):
             process = psutil.Process(pid)
             entry.ts = ts
             entry.pid = pid
-            entry.cmd = " ".join(process.cmdline())
+            cmd_target = process.cmdline()
+            cmd_target[0] = cmd_target[0].split('/')[-1]
+            entry.cmd = " ".join(cmd_target)
             entry.sent = base
             entry.start = time.time()
             entry.memory =  self.safe_psutil_measure(psutil.virtual_memory)._asdict()

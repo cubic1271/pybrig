@@ -60,6 +60,8 @@ class TraceInfo(object):
 
         if do_append:
             self.counters_list.append(trace_counters)
+        self.capture = self.capture.split('/')[-1]
+        self.binary = self.binary.split('/')[-1]
 
     def json(self):
         return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=4)

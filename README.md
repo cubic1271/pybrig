@@ -6,11 +6,7 @@ new graduate degree is to have some data available upon which to base said paper
 gather performance data from bro as it executes against a particular trace.
 
 Note that this github project contains code only to handle the _collection_ of data.  It does not include code to visualize the
-results.  For an example of such code (and basic instructions on its use), please take a look at:
-
-https://github.com/cubic1271/pybrig-vis
-
-However, please note that the above is not a supported project, per se: it's more for my own use than anything else :)
+results.  
 
 Overview
 --------

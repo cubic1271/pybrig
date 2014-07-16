@@ -10,14 +10,7 @@ results.  For an example of such code (and basic instructions on its use), pleas
 
 https://github.com/cubic1271/pybrig-vis
 
-Contributing Data
------------------
-
-Please see:
-
-https://github.com/cubic1271/pybrig/wiki/Contribution-Guide
-
-Such contributions are never required, but are always appreciated.
+However, please note that the above is not a supported project, per se: it's more for my own use than anything else :)
 
 Overview
 --------
@@ -26,6 +19,38 @@ The Python Bro Information Gatherer (PyBrIG) project aims to automate the proces
 a benchmark on a given system.  It aims to be cross-platform (targeted platforms are OSX 10.8+, FreeBSD 9+, and Linux 3.0+),
 simple (a single wrapper script to launch a benchmark), and relatively self-contained.  Additionally, the code in here is intended to be
 easily reusable / customizable for anyone interested in extending and / or replicating the benchmark process.
+
+Quick Guide
+-----------
+
+```bash
+git clone https://github.com/cubic1271/pybrig ./pybrig
+pushd pybrig
+./execute.sh <path/to/trace>
+```
+
+This will generate a 'benchmark-output.bz2' file, which is usually a few hundred KB in size.
+
+PCAP Fetch Utility
+------------------
+
+Note that, if you don't have any traces available / would prefer to use a public trace, executing './execute.sh'
+with no arguments will drop you into a little shell:
+
+```
+List all available captures by entering "list", or fetch a particular capture by using "fetch"
+pcap-fetch>
+```
+
+Typing 'list' here will list a number of public traces that are available, and typing 'fetch <name-of-trace>' will download
+the indicated trace into the current working directory.
+
+Contributing Data
+-----------------
+
+Please see:
+
+https://github.com/cubic1271/pybrig/wiki/Contribution-Guide
 
 Architecture
 ------------
@@ -52,8 +77,6 @@ These four components are built on top of four small-ish libraries:
 * benchmark.info.trial - a wrapper that abstracts much of the details involved with running a single trial
 * benchmark.prof.parse - a parser that offers a simple interface to dealing with prof.log data
 
-benchmark.py could probably see a lot of its code refactored and pulled out into the library.
-
 Requirements
 ------------
 
@@ -73,8 +96,13 @@ available.  If 'sh' is not present, try:
 Running a Benchmark
 -------------------
 
-Note: there is a script (execute.sh) that executes the following so that they don't need to be run manually.  This is
-here solely as a reference.
+Normally, running a benchmark should be as easy as running:
+
+```bash
+./execute.sh /path/to/trace
+```
+
+What execute.sh is actually doing, however, looks something like:
 
 ```bash
 # Retrieve the relevant source code for this installation.
@@ -96,23 +124,25 @@ export LD_LIBRARY_PATH=/tmp/pybrig/env/lib
 echo 'exit' > /tmp/benchmark.fifo
 ```
 
-Note that configure has a number of options to support packaging the dependencies necessary to run on a machine without
-an available internet connection.
-
 _TODO_: Example of how to configure on one machine to download packages, then move them to another box and execute there.
 
-The results of the gather / benchmark scripts are generated in JSON format.  These results can be reviewed and e.g.
-uploaded to something like ElasticSearch.
-
-Uploading results
+Packaging Results
 -----------------
 
-There is a script provided at 'util/upload.py' which automates the upload of benchmark results to an ElasticSearch instance.  To use this script:
+There are two different ways to package results at the moment:
+
+* Use the included util/package.py script to take results and glob them into a single (relatively long) JSON file
+* Use the included util/upload.py script to take results and upload them into an ElasticSearch instance somewhere
+
+To package results, run:
 
 ```bash
-/usr/bin/env python util/upload.py      # to review a list of files that will be pushed onto an ES instance
-/usr/bin/env python util/upload.py -e   # to actually *execute* the upload of the listed files
+/usr/bin/env python util/package.py
 ```
+
+and the utility will take care of the rest.
+
+For notes about uploading results / ElasticSearch, please consult relevant sections later in this README.
 
 Privacy
 -------

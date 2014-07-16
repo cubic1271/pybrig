@@ -61,9 +61,9 @@ if [ $? -ne 0 ]; then
     kill `ps | grep 'benchmark-snapshot' | grep -v 'grep' | gawk '{print $1}'` 2> /dev/null
     exit -1
 fi
+echo "Cleaning up ..."
 # Kill all processes that match the description of the recorder daemon ...
 kill `ps | grep 'benchmark-snapshot' | grep -v 'grep' | gawk '{print $1}'` 2> /dev/null
-echo "exit" > /tmp/benchmark.fifo
 echo "Packaging benchmark results ..."
 # Package the results
 /usr/bin/env python util/package.py

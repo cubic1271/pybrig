@@ -111,6 +111,7 @@ if __name__ == '__main__':
     prefix = options.prefix
     trial_dir = options.trial_dir
     capture = options.capture
+    capture = os.path.abspath(capture)
 
     try:
         os.makedirs(options.trial_dir)
@@ -210,3 +211,5 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         print ""
         print "*** Benchmark aborted.  Current trial at time of termination: %s" % trial.name
+        sys.exit(-1)
+

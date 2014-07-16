@@ -10,6 +10,15 @@ results.  For an example of such code (and basic instructions on its use), pleas
 
 https://github.com/cubic1271/pybrig-vis
 
+Contributing Data
+-----------------
+
+Please see:
+
+https://github.com/cubic1271/pybrig/wiki/Contribution-Guide
+
+Such contributions are never required, but are always appreciated.
+
 Overview
 --------
 
@@ -182,6 +191,10 @@ Data Overview
 All data produced by the benchmark is in standard JSON format.  While verbose, this format allows the data to be uploaded
 to any number of remote locations / servers.  Just about anything that supports CRUD operations on JSON data should work
 pretty well (with the exception of MongoDB, which normally complains when dealing with field names that include '.')
+
+Note that a specific discussion of default data included in benchmark output may be found at:
+
+https://github.com/cubic1271/pybrig/wiki/Contribution-Guide
 
 Working with Data: ElasticSearch
 --------------------------------

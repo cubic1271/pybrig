@@ -1,6 +1,8 @@
 __author__ = 'clarkg1'
 
 from optparse import OptionParser
+import base64
+import hashlib
 import json
 import os
 import sh
@@ -15,6 +17,15 @@ class TraceInfo(object):
         self.binary = binary
         self.resolution = 100.0
 
+    def hash(self):
+        hasher = hashlib.sha256()
+        target = open(self.capture, 'rb')
+        buf = target.read(65536)
+        while len(buf) > 0:
+            hasher.update(buf)
+            buf = target.read(65536)
+        return base64.b64encode(hasher.digest())
+
     def process(self):
         ips = sh.Command(self.binary).bake('-t')
         start_time = None
@@ -28,6 +39,7 @@ class TraceInfo(object):
                 start_time = float(line)
             end_time = float(line)
 
+        self.sha256 = self.hash()
         self.count = packet_count
         self.start = start_time
         self.end = end_time

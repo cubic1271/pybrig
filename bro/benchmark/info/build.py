@@ -12,9 +12,12 @@ from urlparse import urlsplit
 from optparse import OptionParser
 
 class BuildConfiguration(object):
-    def __init__(self, url, dirname):
+    def __init__(self, url, dirname, env = None):
         self.branch = None
         self.url = url
+        self.env = os.environ.copy()
+        if env:
+            self.env = env
         self.dirname = dirname
         self.prefix = None
         self.autoconf = False
@@ -44,23 +47,32 @@ class BuildConfiguration(object):
             raise ex
         self.popd()
 
+    def make(self, command = None):
+        if not self.do_build:
+            return
+        make = sh.make.bake(_cwd='./', _env=self.env)
+        if command:
+            make(command, '-j', self.jobs)
+        else:
+            make(j=self.jobs)
+
     def build(self):
         if not self.do_build:
             return
         if(self.autoconf):
             sh.autoreconf("--force", "--install")
         configure = sh.Command("./configure")
-        make = sh.make.bake(_cwd='./')
+        make = sh.make.bake(_cwd='./', _env=self.env)
         if(self.prefix):
-            configure('--prefix='+self.prefix)
+            configure('--prefix='+self.prefix, _env=self.env)
         else:
-            configure()
+            configure(_env=self.env)
         make(j=self.jobs)
 
     def install(self):
         if not self.do_build:
             return
-        sh.make.install()
+        sh.make.install(_env=self.env)
 
     def clean(self):
         if not self.do_build:
@@ -170,6 +182,7 @@ def build_sigar_python(target):
         tmpenv['CFLAGS'] = '-Qunused-arguments'    
 
     try:
+        tmpenv['LDFLAGS'] = '-L' + target.prefix + '/lib -L' + target.prefix + '/lib64'
         sh.python("setup.py", "--with-sigar="+target.prefix, "install", "--prefix="+target.prefix, _env=tmpenv)
     except sh.ErrorReturnCode,ex:
         print "Unable to build SIGAR python extensions: %s" % ex.stderr

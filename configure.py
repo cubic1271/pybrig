@@ -92,12 +92,19 @@ if __name__ == '__main__':
     ipsumdump.prefix = install_dir
     result = ipsumdump.autobuild()
 
-    if options.detailed:
-        print "Executing jobs for bro (benchmark patch) ..."
-        bro = build.GitBuildConfiguration('https://github.com/cubic1271/bro', os.path.join(src_dir, 'bro'))
-    else:
-        print "Executing jobs for bro (vanilla, master) ..."
-        bro = build.GitBuildConfiguration('https://github.com/bro/bro', os.path.join(src_dir, 'bro'))
+    bro_env = os.environ.copy()
+    bro_env['LDFLAGS'] = '-L' + os.path.join(os.path.join(os.path.join(src_dir, 'instrumentation'), 'aux'), 'syshook') + ' -lsyshook-malloc -lsyshook-io'
+    bro_env['LD_LIBRARY_PATH'] = os.path.join(os.path.join(os.path.join(src_dir, 'instrumentation'), 'aux'), 'syshook')
+
+    print "Executing preload jobs for bro-plugin-instrumentation ..."
+    plugin_inst = build.GitBuildConfiguration('https://github.com/cubic1271/bro-plugin-instrumentation', os.path.join(src_dir, 'instrumentation'))
+    plugin_inst.retrieve()
+    plugin_inst.pushd(plugin_inst.dirname)
+    plugin_inst.make(command='preload')
+    plugin_inst.popd()
+
+    print "Executing jobs for bro (vanilla, master) ..."
+    bro = build.GitBuildConfiguration('https://github.com/bro/bro', os.path.join(src_dir, 'bro'), env=bro_env)
 
     bro.do_build = not options.no_build
     bro.do_retrieve = not options.no_retrieve
@@ -106,12 +113,9 @@ if __name__ == '__main__':
     if not options.no_retrieve:
         print "Fetching source ..."
     bro.retrieve()
-
-    if not options.no_retrieve and options.detailed:
-        bro.pushd(os.path.join(bro.dirname, 'cmake'))
-        bro.checkout('topic/robin/papi')
-        bro.merge('master')
-        bro.popd()
+    bro.pushd(bro.dirname)
+    bro.checkout('topic/gilbert/plugin-api-tweak')
+    bro.popd()
 
     bro.prefix = install_dir
     bro.jobs = 8
@@ -120,13 +124,19 @@ if __name__ == '__main__':
 
     if not options.no_build:
         print "Compiling ..."
-    bro.build()
-
-    if not options.no_build:
+        bro.build()
         print "Installing ..."
-    bro.install()
+        bro.install()
 
     bro.popd()
+
+    print "Executing jobs for bro-plugin-instrumentation ..."
+    bro_env['BRO'] = os.path.join(src_dir, 'bro')
+    plugin_inst = build.GitBuildConfiguration('https://github.com/cubic1271/bro-plugin-instrumentation', os.path.join(src_dir, 'instrumentation'), env=bro_env)
+    plugin_inst.pushd(plugin_inst.dirname)
+    plugin_inst.make()
+    plugin_inst.install()
+    plugin_inst.popd()
 
     if not options.no_build:
         print "There is now a usable installation configured at " + install_dir + ".  Go forth and benchmark."
@@ -139,3 +149,4 @@ if __name__ == '__main__':
         if ".tar.bz2" in options.do_package or ".tbz2" in options.do_package:
             sh.tar('cjf', options.do_package, sh.glob('*'))
         print "Done."
+

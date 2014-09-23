@@ -158,6 +158,8 @@ if __name__ == '__main__':
     else:
         broenv['LD_LIBRARY_PATH'] = prefix + '/lib'
 
+    broenv['BRO_PLUGIN_ACTIVATE'] = 'Instrumentation::Instrumentation'
+
     import bro.benchmark.info.trial as bench
     benchmark_ref = bench.BenchmarkInfo()
 

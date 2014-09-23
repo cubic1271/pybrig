@@ -1,8 +1,10 @@
 __author__ = 'clarkg1'
 
 from optparse import OptionParser
+import glob
 import os
 import sh
+import shutil
 import sys
 import platform
 import bro.benchmark.info.build as build
@@ -101,6 +103,8 @@ if __name__ == '__main__':
     plugin_inst.retrieve()
     plugin_inst.pushd(plugin_inst.dirname)
     plugin_inst.make(command='preload')
+    for target in glob.glob('./aux/syshook/*.so'):
+        shutil.copy(target, os.path.join(install_dir, 'lib'))
     plugin_inst.popd()
 
     print "Executing jobs for bro (vanilla, master) ..."

@@ -128,6 +128,14 @@ class BenchmarkTrial(object):
         process = self.bro(args, _bg=True)
         process.wait()
 
+        std_out = open('.stdout', 'w')
+        std_out.write(process.stdout)
+        std_out.close()
+        
+        std_err = open('.stderr', 'w')
+        std_err.write(process.stderr)
+        std_err.close()
+
         if callback:
             callback(self)
 
@@ -135,3 +143,4 @@ class BenchmarkTrial(object):
 
         self.popd()
         self.popd()
+

@@ -34,25 +34,34 @@ if __name__ == '__main__':
     curr = open(os.path.join(trial_base, 'gather.json'), 'r')
     output_aggregator['gather-info'] = json.load(curr)
 
+    print "Processing " + str(len(entries)) + " items ..."
     for entry in entries:
         if not os.path.isdir(os.path.join(trial_base, entry)):
             continue
         curr_trial = os.path.join(trial_base, entry)
-        benchmark = os.path.join(curr_trial, 'benchmark.json')
+        functions = os.path.join(curr_trial, 'profile.out')
+        collections = os.path.join(curr_trial, 'collection.out')
         profile = os.path.join(curr_trial, 'prof.json')
-        if not os.path.exists(benchmark):
-            print "[WARN] Malformed trial result - missing benchmark.json (%s)" % benchmark
+        
+        if not os.path.exists(functions):
+            print "[WARN] Malformed trial result - missing functions.out (%s)" % functions
+            continue
+        if not os.path.exists(collections):
+            print "[WARN] Malformed trial result - missing collection.out (%s)" % collections
             continue
         if not os.path.exists(profile):
             print "[WARN] Malformed trial result - missing prof.json (%s)" % profile
             continue        
 
         output_aggregator[entry] = dict()
-        curr = open(benchmark, 'r')
-        output_aggregator[entry]['benchmark'] = json.load(curr)
+        curr = open(functions, 'r')
+        output_aggregator[entry]['function'] = json.load(curr)
+        curr = open(collections, 'r')
+        output_aggregator[entry]['collection'] = json.load(curr)
         curr = open(profile, 'r')
         output_aggregator[entry]['profile'] = json.load(curr)
 
+    print "Writing output (" + str(len(output_aggregator)) + " valid items found) ..."
     output_file = bz2.BZ2File('benchmark-output.bz2', 'wb')
     json.dump(output_aggregator, output_file, sort_keys=True, indent=4)
 

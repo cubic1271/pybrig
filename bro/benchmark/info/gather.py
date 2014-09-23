@@ -139,7 +139,10 @@ class SystemInformation(object):
             return
 
         self.sysctl = dict()
-        sysctl = sh.sysctl.bake(_cwd='.')
+        try:
+            sysctl = sh.sysctl.bake(_cwd='.')
+        except sh.CommandNotFound:
+            sysctl = sh.Command('/sbin/sysctl').bake(_cwd='.')
         last = ""
         os_name = sh.uname().strip()
         for line in sysctl('-a', _iter=True):

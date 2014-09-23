@@ -38,13 +38,13 @@ else
     echo "Skipping configuration step (/tmp/pybrig/env appears to already exist)."
 fi
 export PYTHONPATH="$ENVDIR/lib/python$PYTHON_VERSION/site-packages:$ENVDIR/lib64/python$PYTHON_VERSION/site-packages"
-export LD_LIBRARY_PATH=$ENVDIR/lib
-# Execute the recorder daemon ...
-kill `ps | grep 'benchmark-snapshot' | grep -v 'grep' | gawk '{print $1}'` 2> /dev/null  # after doing a bit of cleanup ...
-rm -f /tmp/benchmark.fifo  
-/usr/bin/env python util/benchmark-snapshot.py > /tmp/snapshot.log 2> /tmp/snapshot.log&
+export LD_LIBRARY_PATH=$ENVDIR/lib:$ENVDIR/lib64
+# Execute the information gathering script
+mkdir -p /tmp/pybrig/trials
+/usr/bin/env python gather.py > /tmp/pybrig/trials/gather.json
 if [ $? -ne 0 ]; then
-    echo "Unable to launch benchmark-snapshot script.  Aborting ..."
+    echo "Gather script failed.  Aborting ..."
+    kill `ps | grep 'benchmark-snapshot' | grep -v 'grep' | gawk '{print $1}'` 2> /dev/null
     exit -1
 fi
 # Execute the benchmark script
@@ -54,16 +54,6 @@ if [ $? -ne 0 ]; then
     kill `ps | grep 'benchmark-snapshot' | grep -v 'grep' | gawk '{print $1}'` 2> /dev/null
     exit -1
 fi
-# Execute the information gathering script
-/usr/bin/env python gather.py > /tmp/pybrig/trials/gather.json
-if [ $? -ne 0 ]; then
-    echo "Gather script failed.  Aborting ..."
-    kill `ps | grep 'benchmark-snapshot' | grep -v 'grep' | gawk '{print $1}'` 2> /dev/null
-    exit -1
-fi
-echo "Cleaning up ..."
-# Kill all processes that match the description of the recorder daemon ...
-kill `ps | grep 'benchmark-snapshot' | grep -v 'grep' | gawk '{print $1}'` 2> /dev/null
 echo "Packaging benchmark results ..."
 # Package the results
 /usr/bin/env python util/package.py

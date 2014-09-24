@@ -1,7 +1,7 @@
-__author__ = 'clarkg1'
-
+from ConfigParser import ConfigParser
 from optparse import OptionParser
 import base64
+import distutils
 import hashlib
 import json
 import os
@@ -107,50 +107,51 @@ if __name__ == '__main__':
     trial_dir = "/tmp/pybrig/trials"
     benchmark_id = uuid.uuid1()
     recorder_process = None
+    config_path = "benchmark.conf"
 
     parser = OptionParser()
+    parser.add_option("-c", "--config", action="store", dest="config", help="Specify a path to a configuration file", default=config_path, metavar="CONFIG")
     parser.add_option("-p", "--prefix", action="store", dest="prefix", help="Use packages from this directory path (NOTE: if non-standard, make sure your PYTHONPATH / LD_LIBRARY_PATH is correct...)", default=prefix, metavar="PREFIX")
     parser.add_option("-s", "--srcdir", action="store", dest="trial_dir", help="Results are stored at this location", default=trial_dir, metavar="STORAGE_DIR")
     parser.add_option("-f", "--file", action="store", dest="capture", help="Capture file to analyze", default=None, metavar="CAPTURE_FILE")
     parser.add_option("-r", "--read", action="store", dest="capture", help="Capture file to analyze (alias for '-f')", metavar="CAPTURE_FILE")
     (options, args) = parser.parse_args()
-
-    if not options.capture:
-        print "ERROR: No capture file specified"
-        parser.print_help()
-        sys.exit(-1)
+    
+    config_entries = ConfigParser(allow_no_value=True)
+    config_entries.optionxform = str
+    config_entries.read(config_path)
 
     prefix = options.prefix
     trial_dir = options.trial_dir
-    capture = options.capture
-    capture = os.path.abspath(capture)
+    
+    if options.capture:
+        capture = options.capture
+        capture = [os.path.abspath(capture)]
+    else:
+        capture = config_entries.items('captures')
+        tcapture = []
+        for item in capture:
+            item = item[0]
+            item = os.path.expanduser(item)
+            tcapture.append(os.path.abspath(item))
+        capture = tcapture
+
+    use_bare_mode = False
+    for entry in config_entries.items('options'):
+        if entry[0] == 'bare_mode':
+            if entry[1].lower() == 'true':
+                use_bare_mode = True
+    print "Bare mode: " + str(use_bare_mode)
+    
+    print "Running with capture(s):"
+    for item in capture:
+        print "  > " + item
+    print ""
 
     try:
         os.makedirs(options.trial_dir)
     except OSError,ex:
         pass
-
-    try:
-        import psutil
-    except ImportError:
-        print "'psutil' could not be found.  Is your PYTHONPATH set?"
-        sys.exit(-1)
-
-    script_list = []
-
-    in_file_path = prefix + '/share/bro/base/init-default.bro'
-    in_file = open(in_file_path, 'r')
-
-    for line in in_file:
-        if "@load" in line and "#" not in line:
-            script_list.append(line.strip())
-
-    in_file_path = prefix + '/share/bro/site/local.bro'
-    in_file = open(in_file_path, 'r')
-
-    for line in in_file:
-        if "@load" in line and "#" not in line:
-            script_list.append(line.strip())
 
     broenv = os.environ.copy()
     if 'LD_LIBRARY_PATH' in broenv:
@@ -164,66 +165,63 @@ if __name__ == '__main__':
     benchmark_ref = bench.BenchmarkInfo()
 
     broexec = sh.Command(prefix + '/bin/bro').bake(_env=broenv)
-    trial = bench.BenchmarkTrial(trial_dir, 'script-benchmark.bro', broexec,
-                                 capture, scripts=['script-benchmark'], bare=True)
+    for entry in capture:
+        trial = bench.BenchmarkTrial(trial_dir, 'script-benchmark.bro', broexec,
+                                     entry, scripts=['script-benchmark'], bare=use_bare_mode)
 
-    tmp_list = []
+        script_list = []
+        tmp_list = []
+        if 'scripts-base' in config_entries.sections():
+            for script in config_entries.items('scripts-base'):
+                tmp_list.append('@load ' + script[0])
 
-    i = 1
+        # Scan the trace to get an idea of packet counts and distributions ...
+        print "Scanning trace ..."
 
-    last_pct = 0
+        ips_path = os.path.join(os.path.join(prefix, 'bin'), 'ipsumdump')
+        info = TraceInfo(ips_path, entry)
+        info.process()
+        trace_info = open(os.path.join(trial.basedir, 'capture.' + os.path.split(entry)[-1] + '.json'), 'w')
+        trace_info.write(info.json())
+        trace_info.close()
 
-    # Scan the trace to get an idea of packet counts and distributions ...
-    print "Scanning trace ..."
+        print "Duration: %s" % (info.duration)
+        print "Packets: %s (%s pkt / sec)" % (info.count, info.count / info.duration)
 
-    ips_path = os.path.join(os.path.join(prefix, 'bin'), 'ipsumdump')
-    info = TraceInfo(ips_path, options.capture)
-    info.process()
-    trace_info = open(os.path.join(trial.basedir, 'capture.json'), 'w')
-    trace_info.write(info.json())
-    trace_info.close()
+        try:
+            trial_list = []
+            for section in config_entries.sections():
+                if 'trial-' in section:
+                    trial_list.append(section)
+            
+            i = 1
+            for entry in trial_list:
+                # print "Executing: loaded " + str(i) + " scripts out of " + str(len(script_list)) + "..."
+                print "Executing trial " + str(i) + " / " + str(len(trial_list)) + "..."
+                scripts = config_entries.items('trial-' + str(i))
+                trial.name = 'load.' + str(i) + '.' + entry
+                for script in scripts:
+                    tmp_list.append('@load ' + script[0])
+                data = dict()
+                data['load_entries'] = tmp_list
+                data['benchmark_log_path'] = '/tmp/benchmark.out'
+                data['benchmark_output_delay'] = str(int(info.duration / info.resolution))
 
-    print "Duration: %s" % (info.duration)
-    print "Packets: %s (%s pkt / sec)" % (info.count, info.count / info.duration)
+                try:
+                    trial.execute(trial.name, data, callback=trial_callback)
+                except sh.ErrorReturnCode,ex:
+                    print "Trial failed to execute: " + str(ex.stderr)
+                    print "Output was: " + str(ex.stdout)
+                    print ex.message
+                    raise KeyboardInterrupt
+                benchmark_ref.add(trial)
+                i = i + 1
+                # print ""
 
-    print "Total scripts to test: " + str(len(script_list))
-    sys.stdout.write('Progress: ')
-    sys.stdout.flush()
-
-    try:
-        for script in script_list:
-            # print "Executing: loaded " + str(i) + " scripts out of " + str(len(script_list)) + "..."
-
-            if( (i / float(len(script_list))) > (last_pct + 0.05) ):
-                sys.stdout.write('=')
-                sys.stdout.flush()
-                last_pct += 0.05
-
-            trial.name = 'load-' + str(i)
-            tmp_list.append(script)
-            data = dict()
-            data['load_entries'] = tmp_list
-            data['benchmark_log_path'] = '/tmp/benchmark.out'
-            data['benchmark_output_delay'] = str(int(info.duration / info.resolution))
-
-            try:
-                trial.execute(trial.name, data, callback=trial_callback)
-            except sh.ErrorReturnCode,ex:
-                print "Trial failed to execute: " + str(ex.stderr)
-                print "Output was: " + str(ex.stdout)
-                print ex.message
-                raise KeyboardInterrupt
-            trial.pushd(os.path.join(trial.basedir, trial.name))
-            shutil.copy(data['benchmark_log_path'], os.path.join(os.path.join(trial.basedir, trial.name), 'benchmark.json'))
-            trial.popd()
-            benchmark_ref.add(trial)
-            i = i + 1
-            # print ""
-
-        print ""
-        print "*** Done.  Data has been written to subdirectories of: %s" % trial.basedir
-    except KeyboardInterrupt:
-        print ""
-        print "*** Benchmark aborted.  Current trial at time of termination: %s" % trial.name
-        sys.exit(-1)
+            print ""
+            print "*** Done.  Data has been written to subdirectories of: %s" % trial.basedir
+        except KeyboardInterrupt:
+            print ""
+            print "*** Benchmark aborted.  Current trial at time of termination: %s" % trial.name
+            sys.exit(-1)
 
